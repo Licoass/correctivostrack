@@ -6,6 +6,7 @@ let activeLocks = {}; // Format: { "id-field": "client_X" }
 let ws = null;
 let wsReconnectTimer = null;
 let debounceTimers = {}; // Format: { "id-field": timer }
+let currentViewMode = 'grid'; // 'grid' or 'list'
 
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
@@ -18,6 +19,10 @@ const btnLogout = document.getElementById('btn-logout');
 const roleBadge = document.getElementById('role-badge');
 const roleText = document.getElementById('role-text');
 const connBanner = document.getElementById('conn-banner');
+
+// View controls Elements
+const btnViewGrid = document.getElementById('btn-view-grid');
+const btnViewList = document.getElementById('btn-view-list');
 
 // Stats Elements
 const statsTotal = document.getElementById('stats-total');
@@ -45,16 +50,44 @@ function init() {
     showLogin();
   }
   
+  // Load saved view mode
+  const savedView = localStorage.getItem('cocesna_view_mode') || 'grid';
+  setViewMode(savedView);
+  
   // Set up event listeners
   btnLoginReader.addEventListener('click', loginAsReader);
   loginForm.addEventListener('submit', loginAsEditor);
   btnLogout.addEventListener('click', logout);
+  
+  if (btnViewGrid && btnViewList) {
+    btnViewGrid.addEventListener('click', () => setViewMode('grid'));
+    btnViewList.addEventListener('click', () => setViewMode('list'));
+  }
   
   filterSearch.addEventListener('input', () => renderEquipos());
   filterSede.addEventListener('change', () => renderEquipos());
   filterZona.addEventListener('change', () => renderEquipos());
   filterHasCorrective.addEventListener('change', () => renderEquipos());
   filterOnlyPending.addEventListener('change', () => renderEquipos());
+}
+
+// View switcher setter
+function setViewMode(mode) {
+  currentViewMode = mode;
+  localStorage.setItem('cocesna_view_mode', mode);
+  
+  if (btnViewGrid && btnViewList) {
+    if (mode === 'grid') {
+      btnViewGrid.classList.add('active');
+      btnViewList.classList.remove('active');
+      equipmentGrid.classList.remove('list-view');
+    } else {
+      btnViewGrid.classList.remove('active');
+      btnViewList.classList.add('active');
+      equipmentGrid.classList.add('list-view');
+    }
+  }
+  renderEquipos();
 }
 
 // Authentication Functions
@@ -262,6 +295,13 @@ function createEquipmentCard(item) {
   // Header section
   const header = document.createElement('div');
   header.className = 'equip-card-header';
+  
+  // Toggle expansion in list view
+  header.addEventListener('click', (e) => {
+    if (currentViewMode === 'list' && !e.target.closest('.checkbox-realizado-container') && !e.target.closest('.badge-realizado')) {
+      card.classList.toggle('expanded');
+    }
+  });
   
   const titleBadges = document.createElement('div');
   titleBadges.className = 'equip-card-badges';

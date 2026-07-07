@@ -952,3 +952,163 @@ button, input, select, textarea {
     opacity: 0.8;
   }
 }
+
+/* ----------------------------------------------------
+   VIEW CONTROL: SEGMENTED BUTTONS & LIST VIEW
+------------------------------------------------------- */
+.view-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+}
+
+.segmented-control {
+  display: inline-flex;
+  background-color: var(--md-sys-color-surface-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  padding: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.control-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 8px 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  line-height: 1;
+}
+
+.control-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.control-btn:hover {
+  color: var(--md-sys-color-primary);
+}
+
+.control-btn.active {
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-primary);
+  box-shadow: var(--md-elevation-1);
+}
+
+/* List View Layout Overrides */
+.equipment-grid.list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.equipment-grid.list-view .equip-card {
+  padding: 12px 18px;
+  gap: 0;
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+.equipment-grid.list-view .equip-card:hover {
+  transform: none; /* No translation on hover in list view */
+  border-color: rgba(33, 103, 175, 0.2);
+}
+
+.equipment-grid.list-view .equip-card-header {
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+  padding-right: 32px; /* Make space for expand chevron */
+}
+
+/* Expand chevron icon for list items */
+.equipment-grid.list-view .equip-card-header::after {
+  content: '\e5cf'; /* keyboard_arrow_down symbol */
+  font-family: 'Material Symbols Outlined';
+  font-size: 24px;
+  color: var(--md-sys-color-on-surface-variant);
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: transform var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+}
+
+.equipment-grid.list-view .equip-card.expanded .equip-card-header::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.equipment-grid.list-view .equip-card-badges {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.equipment-grid.list-view .badge-row {
+  margin-right: 8px;
+}
+
+.equipment-grid.list-view .equip-area {
+  margin-top: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  line-height: 1;
+}
+
+.equipment-grid.list-view .equip-edificio {
+  margin-top: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background-color: var(--md-sys-color-surface-variant);
+  padding: 2px 8px;
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+.equipment-grid.list-view .realizado-status-container {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+/* Collapsed body by default in List View */
+.equipment-grid.list-view .equip-card .card-body {
+  display: none;
+  width: 100%;
+}
+
+/* Expanded body state */
+.equipment-grid.list-view .equip-card.expanded .card-body {
+  display: flex;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--md-sys-color-outline-variant);
+  animation: slideIn var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+}
+
+/* Mobile optimizations for list view */
+@media (max-width: 600px) {
+  .equipment-grid.list-view .equip-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-right: 28px;
+  }
+  
+  .equipment-grid.list-view .realizado-status-container {
+    margin-left: 0;
+    margin-top: 2px;
+  }
+
+  .equipment-grid.list-view .equip-area {
+    width: 100%;
+    margin-bottom: 2px;
+  }
+}
