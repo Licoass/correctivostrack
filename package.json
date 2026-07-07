@@ -1,0 +1,17 @@
+{
+  "name": "seguimiento-correctivos-cocesna",
+  "version": "1.0.0",
+  "description": "Sistema de seguimiento de correctivos sugeridos para Cocesna por Eco Ingenieria CR",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "python init_db.py"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7",
+    "ws": "^8.17.0"
+  },
+  "author": "Eco Ingenieria CR",
+  "license": "ISC"
+}

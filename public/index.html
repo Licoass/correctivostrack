@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seguimiento de Correctivos - Eco Ingeniería CR</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <!-- Screen 1: Login -->
+  <div id="login-screen" class="login-container">
+    <div class="login-card">
+      <img src="/logo.png" alt="Eco Ingeniería CR" class="login-logo">
+      <h1>Seguimiento de Correctivos</h1>
+      <p class="login-subtitle">Cocesna - Aire Acondicionado y Energía</p>
+      
+      <div class="login-section">
+        <button id="btn-login-reader" class="btn btn-primary-outline btn-full">
+          <span class="material-symbols-outlined">visibility</span>
+          Ingresar como Lector (Cliente / Técnico)
+        </button>
+      </div>
+      
+      <div class="login-divider">
+        <span>O ingresar como editor</span>
+      </div>
+      
+      <form id="login-editor-form" class="login-form">
+        <div class="input-group">
+          <span class="material-symbols-outlined input-icon">lock</span>
+          <input type="password" id="login-password" placeholder="Contraseña de Editor" required>
+        </div>
+        <button type="submit" id="btn-login-editor" class="btn btn-primary btn-full">
+          <span class="material-symbols-outlined">edit_note</span>
+          Ingresar como Editor
+        </button>
+        <div id="login-error" class="login-error-message hidden">
+          Contraseña incorrecta, intente de nuevo.
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Screen 2: Dashboard -->
+  <div id="dashboard-screen" class="dashboard-container hidden">
+    <!-- Navbar -->
+    <header class="app-bar">
+      <div class="app-bar-brand">
+        <img src="/logo.png" alt="Eco Ingeniería CR" class="app-bar-logo">
+        <div class="app-bar-title-group">
+          <span class="app-bar-title">Eco Ingeniería CR</span>
+          <span class="app-bar-subtitle">Control de Correctivos Cocesna</span>
+        </div>
+      </div>
+      
+      <div class="app-bar-actions">
+        <div id="role-badge" class="badge">
+          <span class="badge-dot"></span>
+          <span id="role-text">Lector</span>
+        </div>
+        <button id="btn-logout" class="btn btn-text icon-only" title="Cerrar Sesión">
+          <span class="material-symbols-outlined">logout</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Summary Cards -->
+      <section class="summary-grid">
+        <div class="card summary-card bg-surface-variant">
+          <div class="summary-icon text-primary">
+            <span class="material-symbols-outlined">ac_unit</span>
+          </div>
+          <div class="summary-details">
+            <span class="summary-value" id="stats-total">0</span>
+            <span class="summary-label">Total Equipos</span>
+          </div>
+        </div>
+        
+        <div class="card summary-card bg-surface-variant">
+          <div class="summary-icon text-warning">
+            <span class="material-symbols-outlined">warning</span>
+          </div>
+          <div class="summary-details">
+            <span class="summary-value" id="stats-pending">0</span>
+            <span class="summary-label">Correctivos Pendientes</span>
+          </div>
+        </div>
+
+        <div class="card summary-card bg-surface-variant">
+          <div class="summary-icon text-success">
+            <span class="material-symbols-outlined">check_circle</span>
+          </div>
+          <div class="summary-details">
+            <span class="summary-value" id="stats-completed">0</span>
+            <span class="summary-label">Correctivos Realizados</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Filter Panel -->
+      <section class="card filter-panel">
+        <div class="filter-row">
+          <div class="input-group search-group">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input type="text" id="filter-search" placeholder="Buscar por área o capacidad...">
+          </div>
+          
+          <div class="select-group">
+            <span class="material-symbols-outlined select-icon">location_on</span>
+            <select id="filter-sede">
+              <option value="">Todas las sedes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-options">
+          <label class="switch-container">
+            <input type="checkbox" id="filter-has-corrective">
+            <span class="switch-slider"></span>
+            <span class="switch-label">Solo equipos con correctivo sugerido</span>
+          </label>
+
+          <label class="switch-container">
+            <input type="checkbox" id="filter-only-pending">
+            <span class="switch-slider"></span>
+            <span class="switch-label">Solo pendientes de realizar</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Connection status banner -->
+      <div id="conn-banner" class="conn-status-banner hidden">
+        <span class="material-symbols-outlined">cloud_off</span>
+        <span>Sin conexión. Reconectando en tiempo real...</span>
+      </div>
+
+      <!-- Equipment List Grid -->
+      <section id="equipment-grid" class="equipment-grid">
+        <!-- Rendered dynamically via JavaScript -->
+        <div class="loading-spinner">
+          <span class="material-symbols-outlined spin">progress_activity</span>
+          Cargando inventario de equipos...
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
