@@ -81,8 +81,8 @@ app.get('/api/equipos', async (req, res) => {
     
     res.json(sanitizedRows);
   } catch (error) {
-    console.error('Error fetching data from Supabase:', error.message);
-    res.status(500).json({ error: 'Error al obtener los equipos de la base de datos' });
+    console.error('Error fetching data from Supabase:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener los equipos de la base de datos' });
   }
 });
 
@@ -130,8 +130,8 @@ app.put('/api/equipos/:id', authenticateEditor, async (req, res) => {
     
     res.json({ success: true, data: updatedRow });
   } catch (error) {
-    console.error('Error updating equipment in Supabase:', error.message);
-    res.status(500).json({ error: 'Error al actualizar el equipo' });
+    console.error('Error updating equipment in Supabase:', error);
+    res.status(500).json({ error: error.message || 'Error al actualizar el equipo' });
   }
 });
 

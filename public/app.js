@@ -149,7 +149,8 @@ async function loadData() {
         logout();
         return;
       }
-      throw new Error('Failed to fetch data');
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to fetch data');
     }
     
     equipos = await response.json();
@@ -162,7 +163,7 @@ async function loadData() {
       <div class="empty-state">
         <span class="material-symbols-outlined empty-state-icon text-warning">error</span>
         <h3>Error al cargar datos</h3>
-        <p>No se pudo establecer conexión con la base de datos.</p>
+        <p>${error.message}</p>
         <button onclick="loadData()" class="btn btn-primary" style="margin-top: 16px;">Reintentar</button>
       </div>
     `;
