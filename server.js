@@ -1,7 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const sqlite3 = require('sqlite3').verbose();
+const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
 const app = express();
@@ -9,40 +10,23 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, 'database.db');
 const PASSWORD_EDITOR = 'Cocesna2026';
+
+// Initialize Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('ERROR: SUPABASE_URL o SUPABASE_KEY faltan en el archivo .env');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+console.log('Client Supabase initialized targeting:', supabaseUrl);
 
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Connect to SQLite Database
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('Error connecting to SQLite database:', err.message);
-  } else {
-    console.log('Connected to SQLite database.');
-  }
-});
-
-// Helper database functions
-const dbRun = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
-  });
-};
-
-const dbAll = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-};
 
 // Authentication Middleware
 const authenticateEditor = (req, res, next) => {
@@ -65,17 +49,29 @@ app.post('/api/login', (req, res) => {
   return res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
 });
 
-// Get all equipments
+// Get all equipments (integrated with Supabase)
 app.get('/api/equipos', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const isEditor = authHeader === PASSWORD_EDITOR;
     
-    const rows = await dbAll("SELECT * FROM equipos ORDER BY sede, area");
+    // Fetch data from Supabase
+    const { data, error } = await supabase
+      .from('equipos')
+      .select('*')
+      .order('sede', { ascending: true })
+      .order('area', { ascending: true });
+      
+    if (error) {
+      throw error;
+    }
     
-    // If not editor, strip quote links
-    const sanitizedRows = rows.map(row => {
-      const sanitized = { ...row };
+    // Sanitize rows and translate boolean 'realizado' to 1/0 for frontend compatibility
+    const sanitizedRows = data.map(row => {
+      const sanitized = { 
+        ...row,
+        realizado: row.realizado ? 1 : 0 // Translate boolean to 1/0
+      };
       if (!isEditor) {
         delete sanitized.link_cotizacion;
       }
@@ -84,47 +80,44 @@ app.get('/api/equipos', async (req, res) => {
     
     res.json(sanitizedRows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al obtener los equipos' });
+    console.error('Error fetching data from Supabase:', error.message);
+    res.status(500).json({ error: 'Error al obtener los equipos de la base de datos' });
   }
 });
 
-// Update equipment details (Editor only)
+// Update equipment details (integrated with Supabase, Editor only)
 app.put('/api/equipos/:id', authenticateEditor, async (req, res) => {
   const { id } = req.params;
   const { correctivo_sugerido, realizado, items_a_cotizar, link_cotizacion } = req.body;
   
   try {
-    // Check if equipment exists
-    const rows = await dbAll("SELECT * FROM equipos WHERE id = ?", [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Equipo no encontrado' });
+    // Build update object
+    const updateData = {};
+    if (correctivo_sugerido !== undefined) updateData.correctivo_sugerido = correctivo_sugerido;
+    if (realizado !== undefined) updateData.realizado = realizado ? true : false; // Translate 1/0 or true/false to boolean
+    if (items_a_cotizar !== undefined) updateData.items_a_cotizar = items_a_cotizar;
+    if (link_cotizacion !== undefined) updateData.link_cotizacion = link_cotizacion;
+    updateData.updated_at = new Date().toISOString();
+    
+    // Update in Supabase
+    const { data, error } = await supabase
+      .from('equipos')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+      
+    if (error) {
+      throw error;
     }
     
-    const current = rows[0];
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Equipo no encontrado en la base de datos' });
+    }
     
-    // We update fields if they are provided in request, otherwise keep old ones
-    const newCorrectivo = correctivo_sugerido !== undefined ? correctivo_sugerido : current.correctivo_sugerido;
-    const newRealizado = realizado !== undefined ? (realizado ? 1 : 0) : current.realizado;
-    const newItems = items_a_cotizar !== undefined ? items_a_cotizar : current.items_a_cotizar;
-    const newLink = link_cotizacion !== undefined ? link_cotizacion : current.link_cotizacion;
-    
-    await dbRun(
-      `UPDATE equipos 
-       SET correctivo_sugerido = ?, realizado = ?, items_a_cotizar = ?, link_cotizacion = ?, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?`,
-      [newCorrectivo, newRealizado, newItems, newLink, id]
-    );
-    
+    // Map back for WebSocket broadcast (convert boolean to 1/0)
     const updatedRow = {
-      id: parseInt(id),
-      sede: current.sede,
-      area: current.area,
-      capacidad: current.capacidad,
-      correctivo_sugerido: newCorrectivo,
-      realizado: newRealizado,
-      items_a_cotizar: newItems,
-      link_cotizacion: newLink
+      ...data[0],
+      realizado: data[0].realizado ? 1 : 0
     };
     
     // Broadcast the update to all connected WebSocket clients
@@ -135,12 +128,12 @@ app.put('/api/equipos/:id', authenticateEditor, async (req, res) => {
     
     res.json({ success: true, data: updatedRow });
   } catch (error) {
-    console.error(error);
+    console.error('Error updating equipment in Supabase:', error.message);
     res.status(500).json({ error: 'Error al actualizar el equipo' });
   }
 });
 
-// WebSocket Server Sincronización
+// WebSocket Server Sincronización (Handles UI Locks & broadcasts)
 // Keep track of active locks: { "id-field": socketId }
 const activeLocks = {};
 // Keep track of client sockets: Map { socket -> socketId }
@@ -165,7 +158,6 @@ wss.on('connection', (ws) => {
       
       switch (parsed.type) {
         case 'lock':
-          // Lock a field: parsed = { type: 'lock', id: 12, field: 'items_a_cotizar' }
           if (parsed.id && parsed.field) {
             const lockKey = `${parsed.id}-${parsed.field}`;
             activeLocks[lockKey] = clientId;
@@ -181,7 +173,6 @@ wss.on('connection', (ws) => {
           break;
           
         case 'unlock':
-          // Unlock a field: parsed = { type: 'unlock', id: 12, field: 'items_a_cotizar' }
           if (parsed.id && parsed.field) {
             const lockKey = `${parsed.id}-${parsed.field}`;
             if (activeLocks[lockKey] === clientId) {
