@@ -1112,3 +1112,69 @@ button, input, select, textarea {
     margin-bottom: 2px;
   }
 }
+
+/* ----------------------------------------------------
+   VIEW/EDIT MODE TOGGLES FOR EDITORS
+------------------------------------------------------- */
+/* Hide inputs when not editing */
+.equip-card:not(.editing) .field-input,
+.equip-card:not(.editing) .checkbox-realizado-container {
+  display: none !important;
+}
+
+/* Hide read-only values when editing */
+.equip-card.editing .field-value-readonly,
+.equip-card.editing .badge-realizado {
+  display: none !important;
+}
+
+/* Quote link styling when not editing */
+.equip-card:not(.editing) .quote-link-group {
+  display: none !important;
+}
+
+.read-only-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--md-sys-shape-corner-s);
+  background-color: rgba(33, 103, 175, 0.08);
+  width: fit-content;
+  transition: background-color 0.2s;
+}
+
+.read-only-link:hover {
+  background-color: rgba(33, 103, 175, 0.15);
+}
+
+.read-only-link.empty {
+  color: var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface-variant);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* Card Actions styling */
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.btn-edit-toggle {
+  font-size: 0.85rem;
+  padding: 8px 18px;
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+/* Expand body automatically when editing in list view */
+.equipment-grid.list-view .equip-card.editing .card-body {
+  display: flex !important;
+}

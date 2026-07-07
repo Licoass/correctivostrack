@@ -349,7 +349,24 @@ function createEquipmentCard(item) {
   const realizadoContainer = document.createElement('div');
   realizadoContainer.className = 'realizado-status-container';
   
+  // Always render static badge for both Readers and Editors (by default)
+  const badge = document.createElement('span');
+  if (item.correctivo_sugerido) {
+    if (item.realizado === 1) {
+      badge.className = 'badge-realizado done';
+      badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Realizado';
+    } else {
+      badge.className = 'badge-realizado pending';
+      badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">pending</span> Pendiente';
+    }
+  } else {
+    badge.className = 'badge-realizado pending';
+    badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">remove</span> N/A';
+  }
+  realizadoContainer.appendChild(badge);
+  
   if (isEditor) {
+    // Also render checkbox for editors (hidden by default unless card has .editing class)
     const label = document.createElement('label');
     label.className = 'checkbox-realizado-container';
     
@@ -371,21 +388,6 @@ function createEquipmentCard(item) {
     label.appendChild(customCheckbox);
     label.appendChild(textSpan);
     realizadoContainer.appendChild(label);
-  } else {
-    const badge = document.createElement('span');
-    if (item.correctivo_sugerido) {
-      if (item.realizado === 1) {
-        badge.className = 'badge-realizado done';
-        badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Realizado';
-      } else {
-        badge.className = 'badge-realizado pending';
-        badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">pending</span> Pendiente';
-      }
-    } else {
-      badge.className = 'badge-realizado pending';
-      badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">remove</span> N/A';
-    }
-    realizadoContainer.appendChild(badge);
   }
   
   header.appendChild(realizadoContainer);
@@ -435,6 +437,34 @@ function createEquipmentCard(item) {
   if (isEditor) {
     const fieldLink = createLinkFieldGroup(item);
     body.appendChild(fieldLink);
+    
+    // 5. Actions footer (Editar / Listo button)
+    const actionsContainer = document.createElement('div');
+    actionsContainer.className = 'card-actions';
+    
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-secondary btn-edit-toggle';
+    editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> <span>Editar</span>';
+    
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Avoid triggering list row toggle
+      const isEditing = card.classList.toggle('editing');
+      if (isEditing) {
+        editBtn.className = 'btn btn-primary btn-edit-toggle';
+        editBtn.innerHTML = '<span class="material-symbols-outlined">check</span> <span>Listo</span>';
+        
+        // Auto-expand list items when entering edit mode
+        if (currentViewMode === 'list') {
+          card.classList.add('expanded');
+        }
+      } else {
+        editBtn.className = 'btn btn-secondary btn-edit-toggle';
+        editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> <span>Editar</span>';
+      }
+    });
+    
+    actionsContainer.appendChild(editBtn);
+    body.appendChild(actionsContainer);
   }
   
   card.appendChild(body);
@@ -457,6 +487,12 @@ function createFieldGroup(fieldKey, labelText, iconName, value, placeholder, ite
   lockIndicator.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px;">lock</span> Editando';
   group.appendChild(lockIndicator);
   
+  // Always render read-only representation
+  const div = document.createElement('div');
+  div.className = `field-value-readonly ${!value ? 'empty' : ''}`;
+  div.textContent = value || 'Ninguno';
+  group.appendChild(div);
+  
   if (isEditor) {
     const textarea = document.createElement('textarea');
     textarea.className = 'field-input';
@@ -472,11 +508,6 @@ function createFieldGroup(fieldKey, labelText, iconName, value, placeholder, ite
     });
     
     group.appendChild(textarea);
-  } else {
-    const div = document.createElement('div');
-    div.className = `field-value-readonly ${!value ? 'empty' : ''}`;
-    div.textContent = value || 'Ninguno';
-    group.appendChild(div);
   }
   
   return group;
@@ -498,6 +529,12 @@ function createFieldGroupInline(fieldKey, labelText, iconName, value, placeholde
   lockIndicator.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px;">lock</span>';
   group.appendChild(lockIndicator);
   
+  // Always render read-only representation
+  const div = document.createElement('div');
+  div.className = `field-value-readonly ${!value ? 'empty' : ''}`;
+  div.textContent = value || 'No registrada';
+  group.appendChild(div);
+  
   if (isEditor) {
     const input = document.createElement('input');
     input.type = 'text';
@@ -513,11 +550,6 @@ function createFieldGroupInline(fieldKey, labelText, iconName, value, placeholde
     });
     
     group.appendChild(input);
-  } else {
-    const div = document.createElement('div');
-    div.className = `field-value-readonly ${!value ? 'empty' : ''}`;
-    div.textContent = value || 'No registrada';
-    group.appendChild(div);
   }
   
   return group;
@@ -539,6 +571,17 @@ function createLinkFieldGroup(item) {
   lockIndicator.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px;">lock</span>';
   group.appendChild(lockIndicator);
   
+  // Read-only link representation
+  const readOnlyLink = document.createElement('a');
+  readOnlyLink.className = `read-only-link ${!item.link_cotizacion ? 'empty' : ''}`;
+  readOnlyLink.href = item.link_cotizacion || '#';
+  readOnlyLink.target = '_blank';
+  readOnlyLink.innerHTML = item.link_cotizacion 
+    ? '<span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span> Ver Cotización' 
+    : 'Ninguna';
+  group.appendChild(readOnlyLink);
+  
+  // Editable link group
   const linkRow = document.createElement('div');
   linkRow.className = 'quote-link-group';
   
@@ -633,6 +676,20 @@ async function saveField(itemId, field, value) {
               linkBtn.classList.remove('hidden');
             } else {
               linkBtn.classList.add('hidden');
+            }
+          }
+          
+          // Sync read-only link text and classes
+          const readOnlyLink = cardEl.querySelector('.read-only-link');
+          if (readOnlyLink) {
+            if (value) {
+              readOnlyLink.href = value;
+              readOnlyLink.classList.remove('empty');
+              readOnlyLink.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span> Ver Cotización';
+            } else {
+              readOnlyLink.href = '#';
+              readOnlyLink.classList.add('empty');
+              readOnlyLink.textContent = 'Ninguna';
             }
           }
         }
@@ -819,6 +876,7 @@ function handleRemoteUpdate(updatedItem) {
       if (currentRole === 'editor') {
         const linkInput = cardEl.querySelector('.quote-link-group input');
         const linkBtn = cardEl.querySelector('.quote-link-group a');
+        const readOnlyLink = cardEl.querySelector('.read-only-link');
         
         if (linkInput && document.activeElement !== linkInput) {
           linkInput.value = updatedItem.link_cotizacion || '';
@@ -832,6 +890,18 @@ function handleRemoteUpdate(updatedItem) {
             linkBtn.classList.add('hidden');
           }
         }
+        
+        if (readOnlyLink) {
+          if (updatedItem.link_cotizacion) {
+            readOnlyLink.href = updatedItem.link_cotizacion;
+            readOnlyLink.classList.remove('empty');
+            readOnlyLink.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span> Ver Cotización';
+          } else {
+            readOnlyLink.href = '#';
+            readOnlyLink.classList.add('empty');
+            readOnlyLink.textContent = 'Ninguna';
+          }
+        }
       }
     }
   }
@@ -842,19 +912,21 @@ function updateFieldDOM(cardEl, field, value) {
   if (!group) return;
   
   const input = group.querySelector('.field-input');
-  if (input) {
-    if (document.activeElement !== input) {
-      input.value = value || '';
-    }
-  } else {
-    const readOnlyDiv = group.querySelector('.field-value-readonly');
-    if (readOnlyDiv) {
+  if (input && document.activeElement !== input) {
+    input.value = value || '';
+  }
+  
+  const readOnlyDiv = group.querySelector('.field-value-readonly');
+  if (readOnlyDiv) {
+    if (field === 'capacidad') {
+      readOnlyDiv.textContent = value || 'No registrada';
+    } else {
       readOnlyDiv.textContent = value || 'Ninguno';
-      if (!value) {
-        readOnlyDiv.classList.add('empty');
-      } else {
-        readOnlyDiv.classList.remove('empty');
-      }
+    }
+    if (!value) {
+      readOnlyDiv.classList.add('empty');
+    } else {
+      readOnlyDiv.classList.remove('empty');
     }
   }
 }
