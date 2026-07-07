@@ -1178,3 +1178,243 @@ button, input, select, textarea {
 .equipment-grid.list-view .equip-card.editing .card-body {
   display: flex !important;
 }
+
+/* ----------------------------------------------------
+   ANALYTICS, HISTORY LOG AND ACTION BUTTONS
+------------------------------------------------------- */
+.control-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  padding: 8px 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short) ease;
+  margin-right: 8px;
+  line-height: 1;
+}
+
+.control-action-btn:hover {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.control-action-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.analytics-panel {
+  margin-bottom: 24px;
+  padding: 24px;
+  background-color: var(--md-sys-color-surface);
+  border-radius: var(--md-sys-shape-corner-l);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  transition: all 0.3s ease;
+}
+
+.analytics-header {
+  margin-bottom: 20px;
+}
+
+.analytics-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.25rem;
+  margin: 0 0 4px 0;
+  color: var(--md-sys-color-on-surface);
+}
+
+.analytics-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--md-sys-color-outline);
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.chart-card {
+  background-color: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-m);
+  padding: 16px;
+  border: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chart-card h4 {
+  margin: 0 0 16px 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface-variant);
+  width: 100%;
+  text-align: center;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  padding-bottom: 8px;
+}
+
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Reincidencia Badges */
+.badge-reincidencia-media {
+  background-color: #FFF3CD;
+  color: #856404;
+  border: 1px solid #FFEBA8;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: var(--md-sys-shape-corner-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-reincidencia-alta {
+  background-color: #F8D7DA;
+  color: #721C24;
+  border: 1px solid #F5C6CB;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: var(--md-sys-shape-corner-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  animation: pulse 2s infinite;
+}
+
+/* Correctives History */
+.corrective-history-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.corrective-history-item {
+  background-color: var(--md-sys-color-surface-container-lowest);
+  border-radius: var(--md-sys-shape-corner-s);
+  padding: 16px;
+  border: 1px dashed var(--md-sys-color-outline-variant);
+  position: relative;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.corrective-history-item:hover {
+  border-color: var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface-container-low);
+}
+
+.corrective-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  padding-bottom: 6px;
+}
+
+.corrective-history-date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--md-sys-color-outline);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-delete-corrective {
+  background: transparent;
+  border: none;
+  color: var(--md-sys-color-error);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--md-sys-shape-corner-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.btn-delete-corrective:hover {
+  background-color: rgba(179, 38, 30, 0.08);
+}
+
+.btn-delete-corrective .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.btn-add-corrective {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background-color: rgba(33, 103, 175, 0.05);
+  color: var(--md-sys-color-primary);
+  border: 1px dashed var(--md-sys-color-primary);
+  padding: 10px;
+  border-radius: var(--md-sys-shape-corner-s);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+  box-sizing: border-box;
+}
+
+.btn-add-corrective:hover {
+  background-color: rgba(33, 103, 175, 0.1);
+  border-style: solid;
+}
+
+/* Hide delete button when not in edit mode */
+.equip-card:not(.editing) .btn-delete-corrective,
+.equip-card:not(.editing) .btn-add-corrective {
+  display: none !important;
+}
+
+/* Adjust visual layout in mobile for action buttons */
+@media (max-width: 600px) {
+  .view-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  
+  .control-action-btn {
+    flex: 1;
+    min-width: 120px;
+    margin-right: 0;
+    justify-content: center;
+  }
+  
+  .segmented-control {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .segmented-control .control-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

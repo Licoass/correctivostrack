@@ -55,13 +55,25 @@ app.get('/api/equipos', async (req, res) => {
     const authHeader = req.headers['authorization'];
     const isEditor = authHeader === PASSWORD_EDITOR;
     
-    // Fetch data from Supabase
+    // Fetch data from Supabase (with joined correctives list)
     const { data, error } = await supabase
       .from('equipos')
-      .select('*')
+      .select(`
+        *,
+        correctivos (
+          id,
+          correctivo_sugerido,
+          realizado,
+          items_a_cotizar,
+          link_cotizacion,
+          created_at,
+          updated_at
+        )
+      `)
       .order('sede', { ascending: true })
       .order('edificio', { ascending: true })
-      .order('numero_equipo', { ascending: true });
+      .order('numero_equipo', { ascending: true })
+      .order('created_at', { foreignTable: 'correctivos', ascending: true });
       
     if (error) {
       throw error;
@@ -69,14 +81,21 @@ app.get('/api/equipos', async (req, res) => {
     
     // Sanitize rows and translate boolean 'realizado' to 1/0 for frontend compatibility
     const sanitizedRows = data.map(row => {
-      const sanitized = { 
+      const correctives = (row.correctivos || []).map(corr => {
+        const sanitizedCorr = {
+          ...corr,
+          realizado: corr.realizado ? 1 : 0 // Translate boolean to 1/0
+        };
+        if (!isEditor) {
+          delete sanitizedCorr.link_cotizacion;
+        }
+        return sanitizedCorr;
+      });
+      
+      return { 
         ...row,
-        realizado: row.realizado ? 1 : 0 // Translate boolean to 1/0
+        correctivos: correctives
       };
-      if (!isEditor) {
-        delete sanitized.link_cotizacion;
-      }
-      return sanitized;
     });
     
     res.json(sanitizedRows);
@@ -86,40 +105,49 @@ app.get('/api/equipos', async (req, res) => {
   }
 });
 
-// Update equipment details (Editor only)
+// Update equipment details (Capacity only - Editor only)
 app.put('/api/equipos/:id', authenticateEditor, async (req, res) => {
   const { id } = req.params;
-  const { correctivo_sugerido, realizado, items_a_cotizar, link_cotizacion, capacidad } = req.body;
+  const { capacidad } = req.body;
   
   try {
-    // Build update object
-    const updateData = {};
-    if (correctivo_sugerido !== undefined) updateData.correctivo_sugerido = correctivo_sugerido;
-    if (realizado !== undefined) updateData.realizado = realizado ? true : false;
-    if (items_a_cotizar !== undefined) updateData.items_a_cotizar = items_a_cotizar;
-    if (link_cotizacion !== undefined) updateData.link_cotizacion = link_cotizacion;
-    if (capacidad !== undefined) updateData.capacidad = capacidad;
-    updateData.updated_at = new Date().toISOString();
-    
-    // Update in Supabase
     const { data, error } = await supabase
       .from('equipos')
-      .update(updateData)
+      .update({ capacidad })
       .eq('id', id)
       .select();
       
-    if (error) {
-      throw error;
-    }
-    
+    if (error) throw error;
     if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'Equipo no encontrado en la base de datos' });
+      return res.status(404).json({ error: 'Equipo no encontrado' });
     }
     
-    // Map back for WebSocket broadcast (convert boolean to 1/0)
+    // Fetch full equipment row with its correctives to broadcast
+    const { data: fullEq, error: fetchErr } = await supabase
+      .from('equipos')
+      .select(`
+        *,
+        correctivos (
+          id,
+          correctivo_sugerido,
+          realizado,
+          items_a_cotizar,
+          link_cotizacion,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('id', id)
+      .order('created_at', { foreignTable: 'correctivos', ascending: true });
+      
+    if (fetchErr) throw fetchErr;
+    
     const updatedRow = {
-      ...data[0],
-      realizado: data[0].realizado ? 1 : 0
+      ...fullEq[0],
+      correctivos: (fullEq[0].correctivos || []).map(c => ({
+        ...c,
+        realizado: c.realizado ? 1 : 0
+      }))
     };
     
     // Broadcast the update to all connected WebSocket clients
@@ -130,8 +158,200 @@ app.put('/api/equipos/:id', authenticateEditor, async (req, res) => {
     
     res.json({ success: true, data: updatedRow });
   } catch (error) {
-    console.error('Error updating equipment in Supabase:', error);
+    console.error('Error updating equipment capacity in Supabase:', error);
     res.status(500).json({ error: error.message || 'Error al actualizar el equipo' });
+  }
+});
+
+// Create a new corrective for an equipment (Editor only)
+app.post('/api/correctivos', authenticateEditor, async (req, res) => {
+  const { equipo_id } = req.body;
+  if (!equipo_id) {
+    return res.status(400).json({ error: 'equipo_id es requerido' });
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('correctivos')
+      .insert({
+        equipo_id,
+        correctivo_sugerido: '',
+        realizado: false,
+        items_a_cotizar: '',
+        link_cotizacion: ''
+      })
+      .select();
+      
+    if (error) throw error;
+    
+    // Fetch full equipment row to broadcast
+    const { data: fullEq, error: fetchErr } = await supabase
+      .from('equipos')
+      .select(`
+        *,
+        correctivos (
+          id,
+          correctivo_sugerido,
+          realizado,
+          items_a_cotizar,
+          link_cotizacion,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('id', equipo_id)
+      .order('created_at', { foreignTable: 'correctivos', ascending: true });
+      
+    if (fetchErr) throw fetchErr;
+    
+    const updatedRow = {
+      ...fullEq[0],
+      correctivos: (fullEq[0].correctivos || []).map(c => ({
+        ...c,
+        realizado: c.realizado ? 1 : 0
+      }))
+    };
+    
+    broadcast({
+      type: 'update',
+      data: updatedRow
+    });
+    
+    res.json({ success: true, data: updatedRow });
+  } catch (error) {
+    console.error('Error creating corrective in Supabase:', error);
+    res.status(500).json({ error: error.message || 'Error al agregar correctivo' });
+  }
+});
+
+// Update a specific corrective (Editor only)
+app.put('/api/correctivos/:id', authenticateEditor, async (req, res) => {
+  const { id } = req.params;
+  const { correctivo_sugerido, realizado, items_a_cotizar, link_cotizacion } = req.body;
+  
+  try {
+    const updateData = {};
+    if (correctivo_sugerido !== undefined) updateData.correctivo_sugerido = correctivo_sugerido;
+    if (realizado !== undefined) updateData.realizado = realizado ? true : false;
+    if (items_a_cotizar !== undefined) updateData.items_a_cotizar = items_a_cotizar;
+    if (link_cotizacion !== undefined) updateData.link_cotizacion = link_cotizacion;
+    updateData.updated_at = new Date().toISOString();
+    
+    const { data, error } = await supabase
+      .from('correctivos')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+      
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Correctivo no encontrado' });
+    }
+    
+    const equipoId = data[0].equipo_id;
+    
+    // Fetch full equipment row to broadcast
+    const { data: fullEq, error: fetchErr } = await supabase
+      .from('equipos')
+      .select(`
+        *,
+        correctivos (
+          id,
+          correctivo_sugerido,
+          realizado,
+          items_a_cotizar,
+          link_cotizacion,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('id', equipoId)
+      .order('created_at', { foreignTable: 'correctivos', ascending: true });
+      
+    if (fetchErr) throw fetchErr;
+    
+    const updatedRow = {
+      ...fullEq[0],
+      correctivos: (fullEq[0].correctivos || []).map(c => ({
+        ...c,
+        realizado: c.realizado ? 1 : 0
+      }))
+    };
+    
+    broadcast({
+      type: 'update',
+      data: updatedRow
+    });
+    
+    res.json({ success: true, data: updatedRow });
+  } catch (error) {
+    console.error('Error updating corrective in Supabase:', error);
+    res.status(500).json({ error: error.message || 'Error al actualizar el correctivo' });
+  }
+});
+
+// Delete a corrective (Editor only)
+app.delete('/api/correctivos/:id', authenticateEditor, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const { data: corrData, error: findErr } = await supabase
+      .from('correctivos')
+      .select('equipo_id')
+      .eq('id', id);
+      
+    if (findErr) throw findErr;
+    if (!corrData || corrData.length === 0) {
+      return res.status(404).json({ error: 'Correctivo no encontrado' });
+    }
+    
+    const equipoId = corrData[0].equipo_id;
+    
+    const { error } = await supabase
+      .from('correctivos')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    
+    // Fetch full equipment row to broadcast
+    const { data: fullEq, error: fetchErr } = await supabase
+      .from('equipos')
+      .select(`
+        *,
+        correctivos (
+          id,
+          correctivo_sugerido,
+          realizado,
+          items_a_cotizar,
+          link_cotizacion,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('id', equipoId)
+      .order('created_at', { foreignTable: 'correctivos', ascending: true });
+      
+    if (fetchErr) throw fetchErr;
+    
+    // If the equipment has no more correctives, fullEq[0].correctivos will be empty
+    const updatedRow = {
+      ...fullEq[0],
+      correctivos: (fullEq[0].correctivos || []).map(c => ({
+        ...c,
+        realizado: c.realizado ? 1 : 0
+      }))
+    };
+    
+    broadcast({
+      type: 'update',
+      data: updatedRow
+    });
+    
+    res.json({ success: true, data: updatedRow });
+  } catch (error) {
+    console.error('Error deleting corrective in Supabase:', error);
+    res.status(500).json({ error: error.message || 'Error al eliminar el correctivo' });
   }
 });
 

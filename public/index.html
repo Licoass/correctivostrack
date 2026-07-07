@@ -12,6 +12,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF & jsPDF AutoTable CDNs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -152,19 +157,58 @@
         <span>Sin conexión. Reconectando en tiempo real...</span>
       </div>
 
-      <!-- Control de Vistas -->
+      <!-- Control de Vistas y Reportes -->
       <div class="view-controls">
+        <button id="btn-toggle-analytics" class="control-action-btn">
+          <span class="material-symbols-outlined">analytics</span>
+          <span>Analíticas</span>
+        </button>
+        <button id="btn-download-pdf" class="control-action-btn">
+          <span class="material-symbols-outlined">download_for_offline</span>
+          <span>Reporte PDF</span>
+        </button>
         <div class="segmented-control">
           <button id="btn-view-grid" class="control-btn active">
             <span class="material-symbols-outlined">grid_view</span>
-            <span>Vista Tarjetas</span>
+            <span>Tarjetas</span>
           </button>
           <button id="btn-view-list" class="control-btn">
             <span class="material-symbols-outlined">view_list</span>
-            <span>Lista Compacta</span>
+            <span>Lista</span>
           </button>
         </div>
       </div>
+
+      <!-- Panel de Analíticas -->
+      <section id="analytics-panel" class="analytics-panel card hidden">
+        <div class="analytics-header">
+          <h3>
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">analytics</span>
+            Estadísticas y Métricas de Correctivos
+          </h3>
+          <p>Métricas generadas en tiempo real para los equipos y correctivos actualmente filtrados</p>
+        </div>
+        <div class="analytics-grid">
+          <div class="chart-card">
+            <h4>Avance de Correctivos</h4>
+            <div class="chart-wrapper">
+              <canvas id="chart-progress"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h4>Correctivos por Sede</h4>
+            <div class="chart-wrapper">
+              <canvas id="chart-sede"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h4>Correctivos por Zona</h4>
+            <div class="chart-wrapper">
+              <canvas id="chart-zona"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- Equipment List Grid -->
       <section id="equipment-grid" class="equipment-grid">
