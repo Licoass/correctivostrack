@@ -49,7 +49,7 @@ app.post('/api/login', (req, res) => {
   return res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
 });
 
-// Get all equipments (integrated with Supabase)
+// Get all equipments
 app.get('/api/equipos', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -60,7 +60,8 @@ app.get('/api/equipos', async (req, res) => {
       .from('equipos')
       .select('*')
       .order('sede', { ascending: true })
-      .order('area', { ascending: true });
+      .order('edificio', { ascending: true })
+      .order('numero_equipo', { ascending: true });
       
     if (error) {
       throw error;
@@ -85,18 +86,19 @@ app.get('/api/equipos', async (req, res) => {
   }
 });
 
-// Update equipment details (integrated with Supabase, Editor only)
+// Update equipment details (Editor only)
 app.put('/api/equipos/:id', authenticateEditor, async (req, res) => {
   const { id } = req.params;
-  const { correctivo_sugerido, realizado, items_a_cotizar, link_cotizacion } = req.body;
+  const { correctivo_sugerido, realizado, items_a_cotizar, link_cotizacion, capacidad } = req.body;
   
   try {
     // Build update object
     const updateData = {};
     if (correctivo_sugerido !== undefined) updateData.correctivo_sugerido = correctivo_sugerido;
-    if (realizado !== undefined) updateData.realizado = realizado ? true : false; // Translate 1/0 or true/false to boolean
+    if (realizado !== undefined) updateData.realizado = realizado ? true : false;
     if (items_a_cotizar !== undefined) updateData.items_a_cotizar = items_a_cotizar;
     if (link_cotizacion !== undefined) updateData.link_cotizacion = link_cotizacion;
+    if (capacidad !== undefined) updateData.capacidad = capacidad;
     updateData.updated_at = new Date().toISOString();
     
     // Update in Supabase
@@ -133,10 +135,8 @@ app.put('/api/equipos/:id', authenticateEditor, async (req, res) => {
   }
 });
 
-// WebSocket Server Sincronización (Handles UI Locks & broadcasts)
-// Keep track of active locks: { "id-field": socketId }
+// WebSocket Server Sincronización
 const activeLocks = {};
-// Keep track of client sockets: Map { socket -> socketId }
 const clients = new Map();
 let clientCounter = 0;
 
@@ -146,7 +146,6 @@ wss.on('connection', (ws) => {
   
   console.log(`WebSocket client connected: ${clientId}`);
   
-  // Send active locks to the newly connected client
   ws.send(JSON.stringify({
     type: 'initial_locks',
     locks: activeLocks
@@ -162,7 +161,6 @@ wss.on('connection', (ws) => {
             const lockKey = `${parsed.id}-${parsed.field}`;
             activeLocks[lockKey] = clientId;
             
-            // Broadcast lock to all other clients
             broadcastToOthers(ws, {
               type: 'lock',
               id: parsed.id,
@@ -178,7 +176,6 @@ wss.on('connection', (ws) => {
             if (activeLocks[lockKey] === clientId) {
               delete activeLocks[lockKey];
               
-              // Broadcast unlock to all other clients
               broadcastToOthers(ws, {
                 type: 'unlock',
                 id: parsed.id,
@@ -187,9 +184,6 @@ wss.on('connection', (ws) => {
             }
           }
           break;
-          
-        default:
-          console.log(`Unknown message type: ${parsed.type}`);
       }
     } catch (e) {
       console.error('Error parsing WS message:', e);
@@ -200,26 +194,21 @@ wss.on('connection', (ws) => {
     console.log(`WebSocket client disconnected: ${clientId}`);
     clients.delete(ws);
     
-    // Release all locks held by this client
-    let lockReleased = false;
     for (const [key, ownerId] of Object.entries(activeLocks)) {
       if (ownerId === clientId) {
         delete activeLocks[key];
         const [id, field] = key.split('-');
         
-        // Broadcast unlock to remaining clients
         broadcast({
           type: 'unlock',
           id: parseInt(id),
           field: field
         });
-        lockReleased = true;
       }
     }
   });
 });
 
-// Broadcast helper for all clients
 function broadcast(data) {
   const messageStr = JSON.stringify(data);
   for (const client of clients.keys()) {
@@ -229,7 +218,6 @@ function broadcast(data) {
   }
 }
 
-// Broadcast helper for everyone except the sender
 function broadcastToOthers(senderWs, data) {
   const messageStr = JSON.stringify(data);
   for (const client of clients.keys()) {
@@ -239,7 +227,6 @@ function broadcastToOthers(senderWs, data) {
   }
 }
 
-// Serve landing page/fallback to index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

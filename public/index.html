@@ -111,13 +111,22 @@
         <div class="filter-row">
           <div class="input-group search-group">
             <span class="material-symbols-outlined search-icon">search</span>
-            <input type="text" id="filter-search" placeholder="Buscar por área o capacidad...">
+            <input type="text" id="filter-search" placeholder="Buscar equipo o edificio...">
           </div>
           
           <div class="select-group">
             <span class="material-symbols-outlined select-icon">location_on</span>
             <select id="filter-sede">
               <option value="">Todas las sedes</option>
+            </select>
+          </div>
+
+          <div class="select-group">
+            <span class="material-symbols-outlined select-icon">public</span>
+            <select id="filter-zona">
+              <option value="">Todas las zonas</option>
+              <option value="GAM">Solo GAM</option>
+              <option value="Foráneo">Solo Foráneos</option>
             </select>
           </div>
         </div>

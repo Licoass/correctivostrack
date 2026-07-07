@@ -27,6 +27,7 @@ const statsCompleted = document.getElementById('stats-completed');
 // Filter Elements
 const filterSearch = document.getElementById('filter-search');
 const filterSede = document.getElementById('filter-sede');
+const filterZona = document.getElementById('filter-zona');
 const filterHasCorrective = document.getElementById('filter-has-corrective');
 const filterOnlyPending = document.getElementById('filter-only-pending');
 const equipmentGrid = document.getElementById('equipment-grid');
@@ -51,6 +52,7 @@ function init() {
   
   filterSearch.addEventListener('input', () => renderEquipos());
   filterSede.addEventListener('change', () => renderEquipos());
+  filterZona.addEventListener('change', () => renderEquipos());
   filterHasCorrective.addEventListener('change', () => renderEquipos());
   filterOnlyPending.addEventListener('change', () => renderEquipos());
 }
@@ -66,7 +68,6 @@ function showDashboard() {
   loginScreen.classList.add('hidden');
   dashboardScreen.classList.remove('hidden');
   
-  // Update badge
   if (currentRole === 'editor') {
     roleBadge.className = 'badge editor';
     roleText.textContent = 'Editor';
@@ -181,7 +182,6 @@ function populateSedeDropdown() {
     filterSede.appendChild(option);
   });
   
-  // Preserve selection if it still exists
   if (sedes.includes(currentSelection)) {
     filterSede.value = currentSelection;
   }
@@ -190,11 +190,7 @@ function populateSedeDropdown() {
 // Stats Calculation
 function calculateStats() {
   const total = equipos.length;
-  
-  // Pending: corrective is suggested (not empty) and not marked done (realizado is 0)
   const pending = equipos.filter(item => item.correctivo_sugerido && item.realizado === 0).length;
-  
-  // Completed: corrective is suggested (not empty) and marked done (realizado is 1)
   const completed = equipos.filter(item => item.correctivo_sugerido && item.realizado === 1).length;
   
   statsTotal.textContent = total;
@@ -206,6 +202,7 @@ function calculateStats() {
 function renderEquipos() {
   const searchVal = filterSearch.value.toLowerCase().trim();
   const sedeVal = filterSede.value;
+  const zonaVal = filterZona.value;
   const hasCorrectiveVal = filterHasCorrective.checked;
   const onlyPendingVal = filterOnlyPending.checked;
   
@@ -213,12 +210,17 @@ function renderEquipos() {
     // Sede filter
     if (sedeVal && item.sede !== sedeVal) return false;
     
-    // Search text (checks area, capacidad, or correctivo)
+    // Zona filter (GAM / Foráneo)
+    if (zonaVal && item.zona !== zonaVal) return false;
+    
+    // Search text (checks equipo, edificio, num, correctivo, capacidad)
     if (searchVal) {
-      const area = (item.area || '').toLowerCase();
-      const capacidad = (item.capacidad || '').toLowerCase();
+      const equipo = (item.equipo || '').toLowerCase();
+      const edificio = (item.edificio || '').toLowerCase();
       const correctivo = (item.correctivo_sugerido || '').toLowerCase();
-      const match = area.includes(searchVal) || capacidad.includes(searchVal) || correctivo.includes(searchVal);
+      const cap = (item.capacidad || '').toLowerCase();
+      const num = String(item.numero_equipo || '');
+      const match = equipo.includes(searchVal) || edificio.includes(searchVal) || correctivo.includes(searchVal) || cap.includes(searchVal) || num.includes(searchVal);
       if (!match) return false;
     }
     
@@ -263,22 +265,42 @@ function createEquipmentCard(item) {
   const titleBadges = document.createElement('div');
   titleBadges.className = 'equip-card-badges';
   
+  // Badge Row (Sede, Zona, Número de equipo)
+  const badgeRow = document.createElement('div');
+  badgeRow.className = 'badge-row';
+  
   const sedeBadge = document.createElement('span');
   sedeBadge.className = 'badge-sede';
   sedeBadge.textContent = item.sede;
-  titleBadges.appendChild(sedeBadge);
+  badgeRow.appendChild(sedeBadge);
   
-  if (item.capacidad) {
-    const capBadge = document.createElement('span');
-    capBadge.className = 'badge-capacidad';
-    capBadge.textContent = item.capacidad;
-    titleBadges.appendChild(capBadge);
+  if (item.zona) {
+    const zonaBadge = document.createElement('span');
+    zonaBadge.className = item.zona === 'GAM' ? 'badge-zona-gam' : 'badge-zona-foraneo';
+    zonaBadge.textContent = item.zona;
+    badgeRow.appendChild(zonaBadge);
   }
   
+  if (item.numero_equipo !== null && item.numero_equipo !== undefined) {
+    const numBadge = document.createElement('span');
+    numBadge.className = 'badge-numero';
+    numBadge.textContent = `#${item.numero_equipo}`;
+    badgeRow.appendChild(numBadge);
+  }
+  
+  titleBadges.appendChild(badgeRow);
+  
+  // Title (Área / Nombre de equipo)
   const areaTitle = document.createElement('h3');
   areaTitle.className = 'equip-area';
-  areaTitle.textContent = item.area;
+  areaTitle.textContent = item.equipo;
   titleBadges.appendChild(areaTitle);
+  
+  // Subtitle (Sitio / Edificio)
+  const edificioSubtitle = document.createElement('div');
+  edificioSubtitle.className = 'equip-edificio';
+  edificioSubtitle.innerHTML = `<span class="material-symbols-outlined">business</span> ${item.edificio}`;
+  titleBadges.appendChild(edificioSubtitle);
   
   header.appendChild(titleBadges);
   
@@ -287,7 +309,6 @@ function createEquipmentCard(item) {
   realizadoContainer.className = 'realizado-status-container';
   
   if (isEditor) {
-    // Checkbox input for editor
     const label = document.createElement('label');
     label.className = 'checkbox-realizado-container';
     
@@ -310,7 +331,6 @@ function createEquipmentCard(item) {
     label.appendChild(textSpan);
     realizadoContainer.appendChild(label);
   } else {
-    // Static badge for readers
     const badge = document.createElement('span');
     if (item.correctivo_sugerido) {
       if (item.realizado === 1) {
@@ -334,7 +354,19 @@ function createEquipmentCard(item) {
   const body = document.createElement('div');
   body.className = 'card-body';
   
-  // 1. Correctivo Sugerido
+  // 1. Capacidad del Equipo (Editable online)
+  const fieldCapacidad = createFieldGroupInline(
+    'capacidad', 
+    'Capacidad del Equipo', 
+    'ac_unit', 
+    item.capacidad, 
+    'Ej: 18.000 BTU, 36.000 BTU...', 
+    item.id,
+    isEditor
+  );
+  body.appendChild(fieldCapacidad);
+  
+  // 2. Correctivo Sugerido
   const fieldCorrectivo = createFieldGroup(
     'correctivo_sugerido', 
     'Correctivo Sugerido', 
@@ -346,7 +378,7 @@ function createEquipmentCard(item) {
   );
   body.appendChild(fieldCorrectivo);
   
-  // 2. Items a Cotizar
+  // 3. Items a Cotizar
   const fieldItems = createFieldGroup(
     'items_a_cotizar', 
     'Qué se debe cotizar', 
@@ -358,7 +390,7 @@ function createEquipmentCard(item) {
   );
   body.appendChild(fieldItems);
   
-  // 3. Link a la Cotización (Only show for Editors)
+  // 4. Link a la Cotización (Only show for Editors)
   if (isEditor) {
     const fieldLink = createLinkFieldGroup(item);
     body.appendChild(fieldLink);
@@ -368,7 +400,7 @@ function createEquipmentCard(item) {
   return card;
 }
 
-// Field creation helper
+// Field creation helper (Block Layout)
 function createFieldGroup(fieldKey, labelText, iconName, value, placeholder, itemId, isEditor) {
   const group = document.createElement('div');
   group.className = 'field-group';
@@ -379,7 +411,6 @@ function createFieldGroup(fieldKey, labelText, iconName, value, placeholder, ite
   label.innerHTML = `<span class="material-symbols-outlined">${iconName}</span> ${labelText}`;
   group.appendChild(label);
   
-  // Lock indicator container (for websocket locks)
   const lockIndicator = document.createElement('div');
   lockIndicator.className = 'lock-badge hidden';
   lockIndicator.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px;">lock</span> Editando';
@@ -392,7 +423,6 @@ function createFieldGroup(fieldKey, labelText, iconName, value, placeholder, ite
     textarea.placeholder = placeholder;
     textarea.value = value || '';
     
-    // WS Locks & Save listeners
     textarea.addEventListener('focus', () => sendLock(itemId, fieldKey));
     textarea.addEventListener('input', (e) => debounceSave(itemId, fieldKey, e.target.value));
     textarea.addEventListener('blur', (e) => {
@@ -405,6 +435,47 @@ function createFieldGroup(fieldKey, labelText, iconName, value, placeholder, ite
     const div = document.createElement('div');
     div.className = `field-value-readonly ${!value ? 'empty' : ''}`;
     div.textContent = value || 'Ninguno';
+    group.appendChild(div);
+  }
+  
+  return group;
+}
+
+// Field creation helper (Inline Layout for Capacidad)
+function createFieldGroupInline(fieldKey, labelText, iconName, value, placeholder, itemId, isEditor) {
+  const group = document.createElement('div');
+  group.className = 'field-group';
+  group.dataset.field = fieldKey;
+  
+  const label = document.createElement('span');
+  label.className = 'field-label';
+  label.innerHTML = `<span class="material-symbols-outlined">${iconName}</span> ${labelText}`;
+  group.appendChild(label);
+  
+  const lockIndicator = document.createElement('div');
+  lockIndicator.className = 'lock-badge hidden';
+  lockIndicator.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px;">lock</span>';
+  group.appendChild(lockIndicator);
+  
+  if (isEditor) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'field-input';
+    input.placeholder = placeholder;
+    input.value = value || '';
+    
+    input.addEventListener('focus', () => sendLock(itemId, fieldKey));
+    input.addEventListener('input', (e) => debounceSave(itemId, fieldKey, e.target.value));
+    input.addEventListener('blur', (e) => {
+      sendUnlock(itemId, fieldKey);
+      triggerImmediateSave(itemId, fieldKey, e.target.value);
+    });
+    
+    group.appendChild(input);
+  } else {
+    const div = document.createElement('div');
+    div.className = `field-value-readonly ${!value ? 'empty' : ''}`;
+    div.textContent = value || 'No registrada';
     group.appendChild(div);
   }
   
@@ -424,7 +495,7 @@ function createLinkFieldGroup(item) {
   
   const lockIndicator = document.createElement('div');
   lockIndicator.className = 'lock-badge hidden';
-  lockIndicator.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px;">lock</span> Editando';
+  lockIndicator.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px;">lock</span>';
   group.appendChild(lockIndicator);
   
   const linkRow = document.createElement('div');
@@ -445,7 +516,6 @@ function createLinkFieldGroup(item) {
   
   linkRow.appendChild(input);
   
-  // External link icon-button
   const linkBtn = document.createElement('a');
   linkBtn.className = `btn btn-text icon-only ${!item.link_cotizacion ? 'hidden' : ''}`;
   linkBtn.href = item.link_cotizacion || '#';
@@ -462,12 +532,10 @@ function createLinkFieldGroup(item) {
 function debounceSave(itemId, field, value) {
   const key = `${itemId}-${field}`;
   
-  // Clear existing timer
   if (debounceTimers[key]) {
     clearTimeout(debounceTimers[key]);
   }
   
-  // Set new timer
   debounceTimers[key] = setTimeout(() => {
     saveField(itemId, field, value);
     delete debounceTimers[key];
@@ -486,7 +554,6 @@ function triggerImmediateSave(itemId, field, value) {
 async function saveField(itemId, field, value) {
   if (currentRole !== 'editor') return;
   
-  // Clean values
   const payload = {};
   payload[field] = value;
   
@@ -510,13 +577,11 @@ async function saveField(itemId, field, value) {
     
     const result = await response.json();
     
-    // Update local dataset
     const idx = equipos.findIndex(item => item.id === itemId);
     if (idx !== -1) {
       equipos[idx] = result.data;
       calculateStats();
       
-      // Update link button visibility dynamically if link was edited
       if (field === 'link_cotizacion') {
         const cardEl = document.querySelector(`.equip-card[data-id="${itemId}"]`);
         if (cardEl) {
@@ -588,12 +653,8 @@ function startWebSocket() {
   ws.onclose = () => {
     console.log('WebSocket disconnected.');
     connBanner.classList.remove('hidden');
-    
-    // Clear locks
     activeLocks = {};
     applyLocksUI();
-    
-    // Attempt reconnect with backoff
     wsReconnectTimer = setTimeout(startWebSocket, 3000);
   };
   
@@ -636,7 +697,6 @@ function sendUnlock(itemId, field) {
 
 // Apply locks in DOM
 function applyLocksUI() {
-  // Clear all lock decorations first
   document.querySelectorAll('.field-input').forEach(el => {
     el.classList.remove('locked');
     el.removeAttribute('disabled');
@@ -645,7 +705,6 @@ function applyLocksUI() {
     el.classList.add('hidden');
   });
   
-  // Apply current active locks
   for (const key of Object.keys(activeLocks)) {
     const [id, field] = key.split('-');
     setFieldLockState(id, field, true);
@@ -663,8 +722,6 @@ function setFieldLockState(itemId, field, isLocked) {
   const badgeEl = fieldGroup.querySelector('.lock-badge');
   
   if (isLocked) {
-    // Only lock if we are NOT the active client holding this input
-    // (the server will send lock updates, but we also verify if it's currently focused locally)
     if (inputEl && document.activeElement !== inputEl) {
       inputEl.classList.add('locked');
       inputEl.setAttribute('disabled', 'true');
@@ -679,25 +736,20 @@ function setFieldLockState(itemId, field, isLocked) {
   }
 }
 
-// Remote update processing (saves data into state and partially updates DOM without disrupting focus)
+// Remote update processing
 function handleRemoteUpdate(updatedItem) {
-  // Update in our array
   const idx = equipos.findIndex(item => item.id === updatedItem.id);
   if (idx !== -1) {
-    const current = equipos[idx];
     equipos[idx] = updatedItem;
     calculateStats();
     
-    // Find card in DOM
     const cardEl = document.querySelector(`.equip-card[data-id="${updatedItem.id}"]`);
     if (cardEl) {
-      // 1. Update checkbox (realizado) if present (and not focused)
       const chkEl = cardEl.querySelector('.checkbox-realizado-container input');
       if (chkEl && document.activeElement !== chkEl) {
         chkEl.checked = updatedItem.realizado === 1;
       }
       
-      // Update read-only badge for reader
       const badgeEl = cardEl.querySelector('.badge-realizado');
       if (badgeEl) {
         if (updatedItem.correctivo_sugerido) {
@@ -714,13 +766,15 @@ function handleRemoteUpdate(updatedItem) {
         }
       }
       
-      // 2. Update Correctivo Sugerido field
+      // Update Capacidad field
+      updateFieldDOM(cardEl, 'capacidad', updatedItem.capacidad);
+      
+      // Update Correctivo Sugerido field
       updateFieldDOM(cardEl, 'correctivo_sugerido', updatedItem.correctivo_sugerido);
       
-      // 3. Update Items a Cotizar field
+      // Update Items a Cotizar field
       updateFieldDOM(cardEl, 'items_a_cotizar', updatedItem.items_a_cotizar);
       
-      // 4. Update Link Cotizacion field (only exists if editor)
       if (currentRole === 'editor') {
         const linkInput = cardEl.querySelector('.quote-link-group input');
         const linkBtn = cardEl.querySelector('.quote-link-group a');
@@ -748,12 +802,10 @@ function updateFieldDOM(cardEl, field, value) {
   
   const input = group.querySelector('.field-input');
   if (input) {
-    // Only update if the user isn't currently writing in it
     if (document.activeElement !== input) {
       input.value = value || '';
     }
   } else {
-    // Read-only view
     const readOnlyDiv = group.querySelector('.field-value-readonly');
     if (readOnlyDiv) {
       readOnlyDiv.textContent = value || 'Ninguno';
